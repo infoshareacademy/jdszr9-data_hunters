@@ -124,3 +124,40 @@ GROUP BY rok, miesiac
 ORDER BY rok, miesiac
 
 
+/* Chcemy sprawdzić częstość występowania wypadków w danej godzinie, gdzie podamy zaokrąglone wartości godzin*/
+CREATE VIEW minuty AS /* tworzymy widok, w którym mamy dodatkowe dane, rozbicie godziny statu wypadku oraz minuty*/
+SELECT id, start_time, 
+	date_part('minute', start_time)  AS minuty, 
+	date_part('hour', start_time)  AS godziny 
+FROM accidents a  
+
+
+CREATE VIEW zaokraglona_godzina AS /* tworzymy widok, w którym zaokrąglamy godzinędo pełnej */
+SELECT * ,
+case 
+			when minuty <= 30 then date_part('hour', start_time) 
+			when minuty > 30  then date_part('hour', start_time)  +1 
+			end as zaokraglenie_godziny 
+FROM minuty	
+
+/* MAmy problem, gdyż powstają dwie wersje godziny 24, musimy to ujednolicić */
+
+
+CREATE VIEW zaokraglona_godzina_poprawna  AS 
+SELECT * ,
+case 
+			when zaokraglenie_godziny = 0 then 24 /* Zamiast godziny 0 wprowadzamy 24 */
+
+			ELSE zaokraglenie_godziny 
+			end as zaokraglenie_godziny_poprawna 
+FROM zaokraglona_godzina
+
+		
+/* Teraz możemy policzyć ilość wypadków w danej godzinie*/
+SELECT count(id) AS ilosc_wypadkow, zaokraglenie_godziny_poprawna 
+FROM zaokraglona_godzina_poprawna
+GROUP BY zaokraglenie_godziny_poprawna 
+ORDER BY ilosc_wypadkow desc		
+
+
+/* Jak widać nawięcej wypadków jest w godzinach od 14 do 18 czyli w momencie powrotów ludzi z pracy , najmniej zaś w godzinach nocnych od 1 do 4 */
