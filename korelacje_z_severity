@@ -1,0 +1,102 @@
+SELECT corr(severity, temperature_f)FROM accidents a
+WHERE severity =3
+OR severity =4
+--* -0.09358287446331066
+
+SELECT corr(severity, temperature_f)FROM accidents a
+WHERE severity =2
+OR severity =1
+--* -0.051193501040349185
+
+SELECT corr(severity, wind_chill_f)FROM accidents a
+WHERE severity =3
+OR severity =4
+--* -0.06825878451257035
+
+SELECT corr(severity, wind_chill_f)FROM accidents a
+WHERE severity =2
+OR severity =1
+--* -0.05591163986376947
+
+SELECT corr(severity, humidity_per)FROM accidents a
+WHERE severity =3
+OR severity =4
+--* 0.07497469029919139
+
+SELECT corr(severity, humidity_per)FROM accidents a
+WHERE severity =2
+OR severity =1
+--*0.06348435718253663
+
+SELECT corr(severity, pressure_in)FROM accidents a
+WHERE severity =3
+OR severity =4
+--* 0.010303769838652594
+
+SELECT corr(severity, pressure_in)FROM accidents a
+WHERE severity =2
+OR severity =1
+--* 0.04403099563227634
+
+SELECT corr(severity, visibility_mi)FROM accidents a
+WHERE severity =3
+OR severity =4
+--* -0.03677709546368155
+
+SELECT corr(severity, visibility_mi)FROM accidents a
+WHERE severity =2
+OR severity =1
+--* -0.01745924960064574
+
+SELECT corr(severity, visibility_mi)FROM accidents a
+WHERE severity =3
+OR severity =4
+--* -0.03677709546368155
+
+SELECT corr(severity, visibility_mi)FROM accidents a
+WHERE severity =2
+OR severity =1
+--* -0.01745924960064574
+
+SELECT corr(severity, wind_speed_mph)FROM accidents a
+WHERE severity =3
+OR severity =4
+--* -0.09124139409248028
+
+SELECT corr(severity, wind_speed_mph)FROM accidents a
+WHERE severity =2
+OR severity =1
+--*-0.020774948651514687
+
+SELECT corr(severity, precipitation_in)FROM accidents a
+WHERE severity =3
+OR severity =4
+--* -0.02706770558949853
+
+SELECT corr(severity, precipitation_in)FROM accidents a
+WHERE severity =2
+OR severity =1
+--* 0.0013752077966429524
+
+
+
+
+
+CREATE VIEW ciezkosc_wypadkow as
+SELECT id, severity
+FROM accidents a 	
+
+create VIEW severity_w_godzinach1 as
+SELECT cw.id, cw.severity, zgp.zaokraglenie_godziny_poprawna
+	FROM ciezkosc_wypadkow cw 
+		JOIN zaokraglona_godzina_poprawna zgp 
+		ON cw.id  = zgp.id 
+		
+--* co tu jest nie tak?
+SELECT count(id) AS ilosc_wypadkow, severity, zaokraglenie_godziny_poprawna
+FROM severity_w_godzinach1 
+	GROUP BY severity
+	GROUP BY zaokraglenie_godziny_poprawna 
+	
+
+
