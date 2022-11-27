@@ -1,3 +1,15 @@
+--* jak sie pozbyc pustych? najwiecej wypadkow z severity 3 i 4 w ladna pogode. Pozostale jak sa chmury
+
+SELECT count(severity), weather_condition 
+FROM accidents
+WHERE severity = 4 OR severity = 3 AND weather_condition IS NOT null
+GROUP BY weather_condition 
+ORDER BY count(severity) DESC
+LIMIT 10
+
+
+
+
 SELECT corr(severity, temperature_f)FROM accidents a
 WHERE severity =3
 OR severity =4
