@@ -1,10 +1,13 @@
+/*Cel: czy pogoda, położenie geograficzne, pora dnia wpływają na liczbę wypadków
+drogowych*/
+
 SELECT *
 FROM accidents a 
 
 SELECT state, count(id) AS ilosc FROM accidents a  /* stany o najwiekszych wypadkach*/
 GROUP BY  state
 ORDER BY ilosc DESC;
-/* najwiecej wypadkow w CA - Kolorado 265,5k, pozniej FL - Floryda 170k, najmniej SD - Dakota Poludniowa 21, 
+/* najwiecej wypadkow w CA - Kalifornia 265,5k, pozniej FL - Floryda 170k, najmniej SD - Dakota Poludniowa 21, 
  * VT-Vermont przedostantnie miejsce 79*/
 
 SELECT city, count(id) AS ilosc FROM accidents a  /* miasta o najczestszych wypadkach */
@@ -23,7 +26,7 @@ state
 FROM accidents a 
 GROUP BY state 
 ORDER BY avg(severity ) DESC ;
-/* najwyzsza srednia powaznosc wypadkow byla w VT-Vermont, CA-Kalifornia dopiero na 45 miejscu, FL-Floryda wyzej na 43 miejscu*/
+/* najwyzsza srednia powaznosc wypadkow byla w VT-Vermont, CA-Kalifornia dopiero na 45/49 miejscu, FL-Floryda wyzej na 43 miejscu*/
 
 /*VT - Vermont ma prawie najmniej wypadkow (48/49 miejsce), ale ma najwyzsza srednia powaznosci*/
 
@@ -61,15 +64,16 @@ avg(temperature_f),
 state 
 FROM accidents a 
 GROUP BY state 
-ORDER BY avg(temperature_f) DESC ;
+ORDER BY avg(temperature_f) DESC 
+LIMIT 10;
 /* najwyzsza srednia temperatura byla na FL-Floryda 77.78*/
 /*najnizsza srednia temperatura byla SD - Dakota Pludniowa 34.68*/
 
 SELECT 
 avg(temperature_f),
-city 
+state 
 FROM accidents a 
-GROUP BY city 
+GROUP BY state  
 ORDER BY avg(temperature_f) asc;
 /*najnizsza srednia temperatura byla Drayton - Dakota Polnocna -8*/
 
@@ -79,3 +83,156 @@ state
 FROM accidents a 
 GROUP BY state 
 ORDER BY avg(visibility_mi) DESC  ;
+
+
+SELECT state , ABS (corr(severity , temperature_f)) korelacja
+FROM accidents a
+GROUP BY state 
+ORDER BY korelacja DESC ;
+/*korelacja 0.23*/
+
+SELECT city , ABS (corr(severity , temperature_f)) korelacja
+FROM accidents a
+GROUP BY city  
+ORDER BY korelacja DESC;
+
+SELECT state , ABS (corr(severity , pressure_in)) korelacja
+FROM accidents a
+GROUP BY state 
+ORDER BY korelacja DESC ;
+/*wieksza korelacja z cisnieniem*/
+
+
+SELECT city  , ABS (corr(severity , pressure_in)) korelacja
+FROM accidents a
+GROUP BY city 
+ORDER BY korelacja DESC ;
+
+SELECT state , ABS (corr(severity , humidity_per)) korelacja
+FROM accidents a
+GROUP BY state 
+ORDER BY korelacja DESC ;
+/*mala korelacja*/
+
+SELECT state , ABS (corr(severity , visibility_mi)) korelacja
+FROM accidents a
+GROUP BY state 
+ORDER BY korelacja DESC ;
+/*mala korelacja*/
+
+SELECT state , ABS (corr(severity , wind_speed_mph)) korelacja
+FROM accidents a
+GROUP BY state 
+ORDER BY korelacja DESC ;
+/*mala korelacja*/
+
+SELECT state , ABS (corr(severity , precipitation_in)) korelacja
+FROM accidents a
+GROUP BY state 
+ORDER BY korelacja DESC ;
+/*mala korelacja*/
+
+SELECT state , ABS (corr(severity , precipitation_in)) korelacja
+FROM accidents a
+GROUP BY state 
+ORDER BY korelacja DESC ;
+/*mala korelacja*/
+
+SELECT city, state , ABS (corr(severity , precipitation_in)) korelacja
+FROM accidents a
+WHERE state = 'CA' 
+GROUP BY city, state
+ORDER BY korelacja DESC ;
+
+CREATE VIEW ilosc_stany AS
+SELECT id, 
+severity , state , temperature_f ,
+humidity_per ,
+pressure_in ,
+visibility_mi ,
+wind_speed_mph ,
+precipitation_in,
+count(id) AS ilosc
+FROM accidents a  
+GROUP BY  state, id
+ORDER BY ilosc DESC;
+
+
+sum(ilosc) suma,
+ABS (corr(severity , temperature_f)) korelacja
+FROM ilosc_stany is2 
+GROUP BY state, ilosc 
+ORDER BY suma DESC ;
+
+SELECT state ,
+sum(ilosc) suma,
+ABS (corr(severity , temperature_f)) korelacja
+FROM ilosc_stany is2 
+GROUP BY state, ilosc 
+ORDER BY korelacja DESC ;
+/*najwieksza korelacja ta gdzie najmniej wypadkow*/
+
+SELECT state ,
+sum(ilosc) suma,
+ABS (corr(severity , humidity_per)) korelacja
+FROM ilosc_stany is2 
+GROUP BY state, ilosc 
+ORDER BY korelacja DESC ;
+
+SELECT state ,
+sum(ilosc) suma,
+ABS (corr(severity , pressure_in)) korelacja
+FROM ilosc_stany is2 
+GROUP BY state, ilosc 
+ORDER BY korelacja DESC ;
+/*korelacja 0,5 SD*/
+
+SELECT state ,
+sum(ilosc) suma,
+ABS (corr(severity , visibility_mi)) korelacja
+FROM ilosc_stany is2 
+GROUP BY state, ilosc 
+ORDER BY korelacja DESC ;
+/*korelacja 0.39 SD*/
+
+
+
+SELECT state ,
+sum(ilosc) suma,
+ABS (corr(severity , wind_speed_mph)) korelacja
+FROM ilosc_stany is2 
+GROUP BY state, ilosc 
+ORDER BY korelacja DESC ;
+/*korelacja 0.1*/
+
+SELECT state ,
+sum(ilosc) suma,
+ABS (corr(severity , precipitation_in)) korelacja
+FROM ilosc_stany is2 
+GROUP BY state, ilosc 
+ORDER BY korelacja DESC ;
+/*korelacja 0.16*/
+
+
+
+
+CREATE VIEW ilosc_city AS
+SELECT id, 
+severity , state , temperature_f ,
+humidity_per ,
+pressure_in ,
+visibility_mi ,
+wind_speed_mph ,
+city,
+precipitation_in,
+count(id) AS ilosc
+FROM accidents a  
+GROUP BY  state, id
+ORDER BY ilosc DESC;
+
+SELECT city ,
+sum(ilosc) suma,
+ABS (corr(severity , pressure_in)) korelacja
+FROM ilosc_city ic 
+GROUP BY city, ilosc 
+ORDER BY city DESC ;
