@@ -25,29 +25,28 @@ CASE
 'Light Rain',
 'Overcast',
 'Scattered Clouds',
-'Light Snow',
 'Fair / Windy',
 'Light Drizzle',
-'Rain',
 'Cloudy / Windy',
 'Mostly Cloudy / Windy',
 'Partly Cloudy / Windy',
 'Light Rain / Windy',
-'Light Snow / Windy',
 'Drizzle',
 'Rain / Windy',
 'N/A Precipitation',
 'Light Freezing Drizzle',
-'Heavy Drizzle',
 'Light Rain Shower',
 'Light Drizzle / Windy',
-'Light Rain Showers',
-'Sand / Dust Whirlwinds / Windy',
-'Funnel Cloud',
-'Dust Whirls'
+'Light Rain Showers'
 ) THEN 1
     ELSE 0
 END AS ordinary,
+CASE
+    WHEN weather_condition IN (
+ 'Clear'
+) THEN 1
+    ELSE 0
+END AS calm,
 CASE
     WHEN weather_condition IN ('Snow',
 'Wintry Mix',
@@ -71,10 +70,33 @@ CASE
 'Snow and Thunder / Windy',
 'Heavy Freezing Drizzle',
 'Heavy Blowing Snow',
-'Sleet / Windy'
+'Sleet / Windy',
+'Light Snow / Windy',
+'Light Snow'
 ) THEN 1
     ELSE 0
 END AS snow,
+CASE
+    WHEN weather_condition IN ('Snow',
+'Heavy Snow',
+'Snow / Windy',
+'Heavy Snow / Windy',
+'Blowing Snow',
+'Light Sleet',
+'Wintry Mix / Windy',
+'Snow and Sleet',
+'Ice Pellets',
+'Snow and Sleet / Windy',
+'Snow Grains',
+'Heavy Freezing Rain',
+'Freezing Rain / Windy',
+'Blowing Snow Nearby',
+'Heavy Ice Pellets',
+'Snow and Thunder / Windy',
+'Heavy Blowing Snow'
+) THEN 1
+    ELSE 0
+END AS big_snow,
 CASE
     WHEN weather_condition IN ('Fog',
 'Haze',
@@ -111,6 +133,7 @@ CASE
 'Thunder / Windy',
 'Rain Shower',
 'Small Hail',
+'Rain',
 'Rain Showers',
 'Heavy Thunderstorms and Snow',
 'Hail',
@@ -125,13 +148,6 @@ CASE
     ELSE 0
 END AS thunder,
 CASE
-    WHEN weather_condition IN (
-'Volcanic Ash',
-'Tornado'
-) THEN 1
-    ELSE 0
-END AS tornado,
-CASE
  WHEN weather_condition IN ('Sand / Dust Whirlwinds',
 'Blowing Dust / Windy',
 'Blowing Dust',
@@ -143,6 +159,10 @@ CASE
 'Duststorm',
 'Sand',
 'Sand / Windy'
+'Volcanic Ash',
+'Tornado',
+'Sand / Dust Whirlwinds / Windy',
+'Dust Whirls'
 ) THEN 1
     ELSE 0
 END AS dust
@@ -150,8 +170,8 @@ END AS dust
 );
  /* I count the accidents that occurred due to atmospheric phenomena in a given group */
 
-SELECT sum(ordinary) AS c_ordinary, sum(tornado) AS c_tornado, sum(snow) AS c_snow, 
-sum(fog) AS c_fog, sum(thunder) AS c_thunder, sum( dust) AS c_dust   FROM group_weather;
+SELECT sum(ordinary) AS c_ordinary, sum(snow) AS c_snow, 
+sum(fog) AS c_fog, sum(thunder) AS c_thunder, sum( dust) AS c_dust, sum(calm) AS c_clear  FROM group_weather;
 
 DROP VIEW ord_days;
 
@@ -163,11 +183,6 @@ SELECT DISTINCT start_date, airport_code   FROM group_weather
 CREATE TEMPORARY VIEW ord_day AS (
 SELECT DISTINCT start_date, airport_code   FROM group_weather
 WHERE ordinary =1
-);
-
-CREATE TEMPORARY VIEW torn_day AS (
-SELECT DISTINCT start_date, airport_code   FROM group_weather
-WHERE tornado =1
 );
 
 CREATE TEMPORARY VIEW snow_day AS (
@@ -192,7 +207,17 @@ WHERE dust =1
 
 CREATE TEMPORARY VIEW out_day AS (
 SELECT DISTINCT start_date, airport_code   FROM group_weather
-WHERE dust=1 OR thunder = 1 OR fog =1 OR snow = 1 OR ordinary = 1 OR tornado = 1
+WHERE dust=1 OR thunder = 1 OR fog =1 OR snow = 1
+);
+
+CREATE TEMPORARY VIEW calm_day AS (
+SELECT DISTINCT start_date, airport_code   FROM group_weather
+WHERE calm = 1
+);
+
+CREATE TEMPORARY VIEW big_snow_day AS (
+SELECT DISTINCT start_date, airport_code   FROM group_weather
+WHERE big_snow = 1
 );
 
 
@@ -204,12 +229,6 @@ ON td.airport_code = gw.airport_code AND td.start_date =gw.start_date
 
 CREATE TEMPORARY VIEW ord_acc AS (
 SELECT  gw.*  FROM ord_day td
-LEFT JOIN group_weather gw
-ON td.airport_code = gw.airport_code AND td.start_date =gw.start_date
-);
-
-CREATE TEMPORARY VIEW torn_acc AS (
-SELECT  gw.*  FROM torn_day td
 LEFT JOIN group_weather gw
 ON td.airport_code = gw.airport_code AND td.start_date =gw.start_date
 );
@@ -226,7 +245,6 @@ LEFT JOIN group_weather gw
 ON td.airport_code = gw.airport_code AND td.start_date =gw.start_date
 );
 
-
 CREATE TEMPORARY VIEW thun_acc AS (
 SELECT  gw.*  FROM thun_day td
 LEFT JOIN group_weather gw
@@ -240,15 +258,27 @@ ON td.airport_code = gw.airport_code AND td.start_date =gw.start_date
 );
 
 CREATE TEMPORARY VIEW out_acc AS (
-SELECT  gw.*  FROM dust_day td
+SELECT  gw.*  FROM out_day td
+LEFT JOIN group_weather gw
+ON td.airport_code = gw.airport_code AND td.start_date =gw.start_date
+);
+
+CREATE TEMPORARY VIEW calm_acc AS (
+SELECT  gw.*  FROM calm_day td
+LEFT JOIN group_weather gw
+ON td.airport_code = gw.airport_code AND td.start_date =gw.start_date
+);
+
+CREATE TEMPORARY VIEW big_snow_acc AS (
+SELECT  gw.*  FROM big_snow_day td
 LEFT JOIN group_weather gw
 ON td.airport_code = gw.airport_code AND td.start_date =gw.start_date
 );
 
  /* I count the accidents that occurred due to atmospheric phenomena in a given group */
 
-SELECT sum(ordinary) AS c_ordinary, sum(tornado) AS c_tornado, sum(snow) AS c_snow, 
-sum(fog) AS c_fog, sum(thunder) AS c_thunder, sum( dust) AS c_dust   FROM group_weather;
+SELECT sum(ordinary) AS c_ordinary, sum(snow) AS c_snow, 
+sum(fog) AS c_fog, sum(thunder) AS c_thunder, sum( dust) AS c_dust, sum( calm) AS c_calm, sum( big_snow) AS big_snow   FROM group_weather;
 
 /* creating a summary of statistics for days with a given weather */
 
@@ -258,10 +288,6 @@ out_t AS (
 SELECT 'outlier_days' AS type_of_day, avg(severity) AS severity, count(*) AS n_accidents, count(DISTINCT(airport_code, start_date)) AS n_days_air_stat,
 count(DISTINCT start_date) AS n_days, round(CAST(count(*) AS decimal)/count(DISTINCT(airport_code, start_date)),2) AS n_acc_per_day_air,
 round(count(*)/count(DISTINCT start_date),2) AS n_acc_per_day  FROM out_acc
-), torn_t as(
-SELECT 'tornado_days' AS type_of_day,avg(severity) AS severity, count(*) AS n_accidents, count(DISTINCT(airport_code, start_date)) AS n_days_air_stat,
-round(count(DISTINCT start_date), 2) AS n_days, round(CAST(count(*) AS decimal)/count(DISTINCT(airport_code, start_date)), 2) AS n_acc_per_day_air,
-round(count(*)/count(DISTINCT start_date),2) AS n_acc_per_day  FROM torn_acc
 ), ord_t as(
 SELECT 'ordinary_days' AS type_of_day, avg(severity) AS severity, count(*) AS n_accidents, count(DISTINCT(airport_code, start_date)) AS n_days_air_stat,
 count(DISTINCT start_date) AS n_days, round(CAST(count(*) AS decimal)/count(DISTINCT(airport_code, start_date)),2) AS n_acc_per_day_air,
@@ -286,9 +312,15 @@ round(count(*)/count(DISTINCT start_date),2) AS n_acc_per_day  FROM dust_acc
 SELECT 'all_days' AS type_of_day, avg(severity) AS severity, count(*) AS n_accidents, count(DISTINCT(airport_code, start_date)) AS n_days_air_stat,
 count(DISTINCT start_date) AS n_days, round(CAST(count(*) AS decimal)/count(DISTINCT(airport_code, start_date)),2) AS n_acc_per_day_air,
 round(count(*)/count(DISTINCT start_date),2) AS n_acc_per_day  FROM all_acc
+),calm_t AS (
+SELECT 'calm_days' AS type_of_day, avg(severity) AS severity, count(*) AS n_accidents, count(DISTINCT(airport_code, start_date)) AS n_days_air_stat,
+count(DISTINCT start_date) AS n_days, round(CAST(count(*) AS decimal)/count(DISTINCT(airport_code, start_date)),2) AS n_acc_per_day_air,
+round(count(*)/count(DISTINCT start_date),2) AS n_acc_per_day  FROM calm_acc
+),big_snow_t AS (
+SELECT 'big_snow_days' AS type_of_day, avg(severity) AS severity, count(*) AS n_accidents, count(DISTINCT(airport_code, start_date)) AS n_days_air_stat,
+count(DISTINCT start_date) AS n_days, round(CAST(count(*) AS decimal)/count(DISTINCT(airport_code, start_date)),2) AS n_acc_per_day_air,
+round(count(*)/count(DISTINCT start_date),2) AS n_acc_per_day  FROM big_snow_acc
 ) 
-SELECT *  FROM torn_t
-UNION 
 SELECT *  FROM ord_t
 UNION 
 SELECT *  FROM snow_t
@@ -301,43 +333,49 @@ SELECT *  FROM dust_t
 UNION 
 SELECT *  FROM all_t
 UNION 
-SELECT *  FROM out_t;
+SELECT *  FROM calm_t
+UNION 
+SELECT *  FROM big_snow_t
+UNION 
+SELECT *  FROM out_t
 ORDER BY n_accidents DESC;
 
  /* creating a summary of statistics for days with a given weather, broken down by state */
 
-
-WITH torn_t as(
-SELECT 'tornado_days' AS type_of_day, state, avg(severity) AS severity, count(*) AS n_accidents, count(DISTINCT(airport_code, start_date)) AS n_days_air_stat,
-round(CAST(count(*) AS decimal)/count(DISTINCT(airport_code, start_date)), 2) AS n_acc_per_day_air FROM torn_acc
-GROUP BY state
-), ord_t as(
-SELECT 'ordinary_days' AS type_of_day, state, avg(severity) AS severity, count(*) AS n_accidents, count(DISTINCT(airport_code, start_date)) AS n_days_air_stat,
+CREATE TEMPORARY VIEW acc_stat as(
+with ord_t as(
+SELECT 'ordinary_days' AS type_of_day, state, count(*) AS n_accidents, count(DISTINCT(airport_code, start_date)) AS n_days_air_stat,
 round(CAST(count(*) AS decimal)/count(DISTINCT(airport_code, start_date)), 2) AS n_acc_per_day_air  FROM ord_acc
 GROUP BY state
 ), snow_t AS(
-SELECT 'snow_days' AS type_of_day, state, avg(severity) AS severity, count(*) AS n_accidents, count(DISTINCT(airport_code, start_date)) AS n_days_air_stat,
+SELECT 'snow_days' AS type_of_day, state,  count(*) AS n_accidents, count(DISTINCT(airport_code, start_date)) AS n_days_air_stat,
  round(CAST(count(*) AS decimal)/count(DISTINCT(airport_code, start_date)),2) AS n_acc_per_day_air  FROM snow_acc
  GROUP BY state
 ), fog_t AS (
-SELECT 'fog_days' AS type_of_day, state,  avg(severity) AS severity, count(*) AS n_accidents, count(DISTINCT(airport_code, start_date)) AS n_days_air_stat,
+SELECT 'fog_days' AS type_of_day, state,  count(*) AS n_accidents, count(DISTINCT(airport_code, start_date)) AS n_days_air_stat,
  round(CAST(count(*) AS decimal)/count(DISTINCT(airport_code, start_date)),2) AS n_acc_per_day_air  FROM fog_acc
  GROUP BY state
 ),thun_t AS (
-SELECT 'thunder_days' AS type_of_day, state,  avg(severity) AS severity, count(*) AS n_accidents, count(DISTINCT(airport_code, start_date)) AS n_days_air_stat,
+SELECT 'thunder_days' AS type_of_day, state,  count(*) AS n_accidents, count(DISTINCT(airport_code, start_date)) AS n_days_air_stat,
  round(CAST(count(*) AS decimal)/count(DISTINCT(airport_code, start_date)),2) AS n_acc_per_day_air  FROM thun_acc
  GROUP BY state
 ),dust_t AS (
-SELECT 'dust_days' AS type_of_day, state,  avg(severity) AS severity, count(*) AS n_accidents, count(DISTINCT(airport_code, start_date)) AS n_days_air_stat,
+SELECT 'dust_days' AS type_of_day, state,   count(*) AS n_accidents, count(DISTINCT(airport_code, start_date)) AS n_days_air_stat,
  round(CAST(count(*) AS decimal)/count(DISTINCT(airport_code, start_date)),2) AS n_acc_per_day_air  FROM dust_acc
  GROUP BY state
 ),all_t AS (
-SELECT 'all_days' AS type_of_day, state,  avg(severity) AS severity, count(*) AS n_accidents, count(DISTINCT(airport_code, start_date)) AS n_days_air_stat,
+SELECT 'all_days' AS type_of_day, state,  count(*) AS n_accidents, count(DISTINCT(airport_code, start_date)) AS n_days_air_stat,
  round(CAST(count(*) AS decimal)/count(DISTINCT(airport_code, start_date)),2) AS n_acc_per_day_air  FROM all_acc
  GROUP BY state
+),calm_t AS (
+SELECT 'calm_days' AS type_of_day, state,  count(*) AS n_accidents, count(DISTINCT(airport_code, start_date)) AS n_days_air_stat,
+ round(CAST(count(*) AS decimal)/count(DISTINCT(airport_code, start_date)),2) AS n_acc_per_day_air  FROM calm_acc
+ GROUP BY state 
+ ), big_snow_t AS (
+ SELECT 'big_snow' AS type_of_day, state,  count(*) AS n_accidents, count(DISTINCT(airport_code, start_date)) AS n_days_air_stat,
+ round(CAST(count(*) AS decimal)/count(DISTINCT(airport_code, start_date)),2) AS n_acc_per_day_air  FROM big_snow_acc
+ GROUP BY state
 ) 
-SELECT *  FROM torn_t
-UNION 
 SELECT *  FROM ord_t
 UNION 
 SELECT *  FROM snow_t
@@ -348,6 +386,11 @@ SELECT *  FROM thun_t
 UNION 
 SELECT *  FROM dust_t
 UNION 
+SELECT *  FROM calm_t
+UNION 
 SELECT *  FROM all_t
-ORDER BY n_acc_per_day_air DESC;
-
+UNION 
+SELECT *  FROM big_snow_t
+ORDER BY n_acc_per_day_air DESC
+);
+SELECT *  FROM acc_stat
