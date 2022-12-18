@@ -49,79 +49,127 @@ CREATE TABLE Accidents (
 	astronomical_twilight varchar(55) NULL
 );
 
-
-SELECT count(*) FROM accidents a;   /* wczytanych jest 2845342 wierszy  */
-
-SELECT * FROM accidents a  /* pogląd widoku danych */
-LIMIT 10;
-
-SELECT count(*) FROM accidents a WHERE humidity_per IS null;
-
-/* brakuje wartości numbers ( 1 743 911), (zipcode='', 1319), teimzone(''), weather timestamp, temperature_f (69 274), 
-   humidity_per( 73 092), pressure_in,  visibility_mi, wind_direction('' 73 775), wind_speed_mph ( 157 944), 
-   precipitation_in, weather_condition('' 70 636)
-    
- */
-
-SELECT * FROM accidents a  /* pogląd widoku danych */
-LIMIT 10;
-
-SELECT state, count(id) AS ilosc FROM accidents a  /* kraje o najwiekszych wypadkach*/
-GROUP BY  state
-ORDER BY ilosc DESC;
-
-SELECT city, count(id) AS ilosc FROM accidents a  /* miasta o najczestszych wypadkach */
-GROUP BY  city
-ORDER BY ilosc DESC;
-
-SELECT min(start_time), max(start_time) FROM accidents a2;   /* zakres czasu */
-
-SELECT mode()  WITHIN GROUP ( ORDER BY start_time) FROM accidents a ;
-SELECT percentile_disc(0.5)  WITHIN GROUP ( ORDER BY start_time) FROM accidents a ;
-
-
-/* licze dlugosc trwania wypadku */
-WITH cte AS(
-SELECT id, (end_time- start_time) AS dlugosc_trwania FROM accidents
-)
-SELECT  percentile_disc(0.1)  WITHIN GROUP ( ORDER BY dlugosc_trwania desc) najdluzsze,
-percentile_disc(0.1)  WITHIN GROUP ( ORDER BY dlugosc_trwania asc) najkrotsze,
-percentile_disc(0.5)  WITHIN GROUP ( ORDER BY dlugosc_trwania asc) mediana
-FROM cte;
-
-SELECT weather_condition , count(id) AS ilosc FROM accidents a  /* w jaka pogode sa wypadki */
-GROUP BY  weather_condition 
-ORDER BY ilosc DESC;
-
-SELECT sunrise_sunset , count(id) AS ilosc FROM accidents a  /* sunrise_sunset a wypadki */
-GROUP BY  sunrise_sunset  
-ORDER BY ilosc DESC;
-
-SELECT visibility_mi  , count(id) AS ilosc
-FROM accidents a  /* widoczność  a wypadki */
-GROUP BY  visibility_mi  
-ORDER BY ilosc DESC;
+SELECT count(id) FROM accidents a 
 
 
 CREATE VIEW rozklad_lat AS /* tworzę widok, w którym dodaje dwie kolumny, rok i miesiąc, w którym dany wypadek się rozpoczął */
 SELECT
 id, 
-to_char(start_time, 'YYYY') AS rok,
-to_char(start_time, 'MM') AS miesiac 
-FROM accidents a 
+to_char(start_time, 'YYYY') AS Year_,
+to_char(start_time, 'YYYY-MM') AS Year_and_month,
+to_char(start_time, 'MM') AS Month_,
+to_char(start_time, 'MM-DD') AS Month_and_day,
+to_char(start_time, 'YYYY-MM-DD') AS date_ 
+FROM accidents a;
 
-DROP VIEW rozklad_lat
+DROP VIEW rozklad_lat ;
+
+CREATE VIEW daty AS
+SELECT id, Year_, CAST(date_ AS date)  FROM rozklad_lat rl
+LIMIT 10
+
+DROP VIEW daty ;
+
+CREATE VIEW ilosc_w_roku as
+		SELECT 	count(id) AS number_of_accidents, 
+				YEAR_ 
+		FROM rozklad_lat
+		GROUP BY  YEAR_
+		ORDER BY  YEAR_
+		
 
 
-SELECT count(id) AS ilosc, rok /* sprawdzam ilość wypadków w danym roku */
+-- Widzimy, że z każdym rokiem liczba wypadków zwiększa się w 2021 wzrost jest znaczny 
+
+CREATE VIEW ilosc_wypadków_w_czasie AS 
+SELECT count(id) AS number_of_accidents, Year_and_month 
+GROUP BY Year_and_month
+ORDER BY Year_and_month;
+
+CREATE VIEW ilosc_wypadków_rozdzielone_mieisace AS 
+SELECT  Year_, Month_ ,count(id) AS number_of_accidents 
 FROM rozklad_lat
-GROUP BY rok 
-ORDER BY rok 
+GROUP BY Year_,  Month_
+ORDER BY Year_,  Month_;
 
-SELECT count(id) AS ilosc, rok, miesiac /* ilość wypadków w danym roku w podziale na miesiące przez co będzie można sprawdzić czy jest może jakaś sezonowośc danych*/
-FROM rozklad_lat
-GROUP BY rok, miesiac
-ORDER BY rok, miesiac
+SELECT * FROM ilosc_wypadków_w_czasie;
+
+DROP VIEW ilosc_wypadków_w_czasie;
+
+--Chcemy teraz sprawdzić czy względniem miesiąca w poprzednim roku urosły wypadki czy zmalały 
+CREATE VIEW roznica_pomiedzy_miesiacami as
+WITH ilosc_w_miesiacach AS (
+		SELECT  Year_, Month_ ,
+				count(id) AS number_of_accidents
+		FROM rozklad_lat
+		GROUP BY Year_,  Month_ 
+		ORDER BY Year_,  Month_ 
+), poprzednie_miesiace AS (
+ 		SELECT 	*, 
+  				LAG( number_of_accidents,12) OVER (ORDER BY Year_,  Month_ ) AS last_year
+  		FROM ilosc_w_miesiacach
+), roznica AS (
+		SELECT 	*, 
+				number_of_accidents - last_year AS difference
+		FROM poprzednie_miesiace
+		WHERE Last_year IS NOT NULL
+) 		SELECT 	*, 
+  				Max(difference) OVER (PARTITION BY  Year_) AS Maximum 
+  		FROM roznica
+DROP VIEW roznica_pomiedzy_miesiacami;
+SELECT * FROM roznica_pomiedzy_miesiacami
+
+
+-- Teraz chcemy sprawdzić jak zachowują się dane z podziałem na pory roku
+-- Tworzymy widok, w którym będzie dodatkowa kolumna z nazwą pory roku  	
+CREATE VIEW Pory_roku AS 		
+SELECT * ,
+case 
+			when date_ BETWEEN '2016-01-01' and '2016-03-20'  THEN 'winter'
+			when date_ BETWEEN '2016-03-21' and '2016-06-21'  THEN 'spring' 
+			when date_ BETWEEN '2016-06-22' and '2016-09-22'  THEN 'summer' 
+			when date_ BETWEEN '2016-09-23' and '2016-12-20'  THEN 'autumn' 
+			when date_ BETWEEN '2016-12-21' and '2017-03-20'  THEN 'winter'
+			when date_ BETWEEN '2017-03-21' and '2017-06-21'  THEN 'spring' 
+			when date_ BETWEEN '2017-06-22' and '2017-09-22'  THEN 'summer' 
+			when date_ BETWEEN '2017-09-23' and '2017-12-20'  THEN 'autumn'
+			when date_ BETWEEN '2017-12-21' and '2018-03-20'  THEN 'winter'
+			when date_ BETWEEN '2018-03-21' and '2018-06-21'  THEN 'spring' 
+			when date_ BETWEEN '2018-06-22' and '2018-09-22'  THEN 'summer' 
+			when date_ BETWEEN '2018-09-23' and '2018-12-20'  THEN 'autumn'
+			when date_ BETWEEN '2018-12-21' and '2019-03-20'  THEN 'winter'
+			when date_ BETWEEN '2019-03-21' and '2019-06-21'  THEN 'spring' 
+			when date_ BETWEEN '2019-06-22' and '2019-09-22'  THEN 'summer' 
+			when date_ BETWEEN '2019-09-23' and '2019-12-20'  THEN 'autumn' 
+			when date_ BETWEEN '2019-12-21' and '2020-03-20'  THEN 'winter'
+			when date_ BETWEEN '2020-03-21' and '2020-06-21'  THEN 'spring' 
+			when date_ BETWEEN '2020-06-22' and '2020-09-22'  THEN 'summer' 
+			when date_ BETWEEN '2020-09-23' and '2020-12-20'  THEN 'autumn' 
+			when date_ BETWEEN '2020-12-21' and '2021-03-20'  THEN 'winter'
+			when date_ BETWEEN '2021-03-21' and '2021-06-21'  THEN 'spring' 
+			when date_ BETWEEN '2021-06-22' and '2021-09-22'  THEN 'summer' 
+			when date_ BETWEEN '2021-09-23' and '2021-12-20'  THEN 'autumn'
+			when date_ BETWEEN '2021-12-21' and '2021-12-31'  THEN 'winter'
+			end as season
+FROM daty;
+
+-- Sprawdzamy teraz liczbę wypadków przypadających na daną porę roku
+
+CREATE VIEW Liczba_wypadków_z_podzialem_na_pory_roku AS 
+SELECT count (id), season 
+FROM Pory_roku 
+GROUP BY season 
+
+-- Teraz sprawdzamy jak to wyglądało z rozbiciem na poszczególe lata
+
+CREATE VIEW Liczba_wypadków_z_podzialem_na_pory_roku_i_lata AS 
+SELECT count (id), season, year_ 
+FROM Pory_roku 
+GROUP BY season, year_ 
+
+
+
+
 
 
 /* Chcemy sprawdzić częstość występowania wypadków w danej godzinie, gdzie podamy zaokrąglone wartości godzin*/
@@ -129,7 +177,7 @@ CREATE VIEW minuty AS /* tworzymy widok, w którym mamy dodatkowe dane, rozbicie
 SELECT id, start_time, 
 	date_part('minute', start_time)  AS minuty, 
 	date_part('hour', start_time)  AS godziny 
-FROM accidents a  
+FROM accidents a;  
 
 
 CREATE VIEW zaokraglona_godzina AS /* tworzymy widok, w którym zaokrąglamy godzinędo pełnej */
@@ -138,7 +186,7 @@ case
 			when minuty <= 30 then date_part('hour', start_time) 
 			when minuty > 30  then date_part('hour', start_time)  +1 
 			end as zaokraglenie_godziny 
-FROM minuty	
+FROM minuty;
 
 /* MAmy problem, gdyż powstają dwie wersje godziny 24, musimy to ujednolicić */
 
@@ -150,14 +198,125 @@ case
 
 			ELSE zaokraglenie_godziny 
 			end as zaokraglenie_godziny_poprawna 
-FROM zaokraglona_godzina
+FROM zaokraglona_godzina;
 
 		
 /* Teraz możemy policzyć ilość wypadków w danej godzinie*/
-SELECT count(id) AS ilosc_wypadkow, zaokraglenie_godziny_poprawna 
+
+CREATE VIEW podzial_wypadkow_na_godziny as
+SELECT count(id) AS number_of_accidents, zaokraglenie_godziny_poprawna 
 FROM zaokraglona_godzina_poprawna
 GROUP BY zaokraglenie_godziny_poprawna 
-ORDER BY ilosc_wypadkow desc		
-
+ORDER BY number_of_accidents DESC;	
 
 /* Jak widać nawięcej wypadków jest w godzinach od 14 do 18 czyli w momencie powrotów ludzi z pracy , najmniej zaś w godzinach nocnych od 1 do 4 */
+
+-- Teraz chcemy sprawdzić czy jest korelacja pomiędzy ilością wypadków a godziną 
+WITH korelacja_godziny AS (
+	SELECT 	count(id) AS ilosc_wypadkow, 
+			zaokraglenie_godziny_poprawna 
+	FROM zaokraglona_godzina_poprawna
+	GROUP BY zaokraglenie_godziny_poprawna 
+	ORDER BY ilosc_wypadkow desc	
+)
+SELECT corr(ilosc_wypadkow,zaokraglenie_godziny_poprawna) AS korelacja
+FROM korelacja_godziny;
+
+--Wartość korelacji = 0,3465
+
+
+
+-- Teraz sprawdzimy ile wypadków jest w kolejne dni tygodnia 
+
+CREATE VIEW wypadki_dni_tygodnia as
+WITH dni_tygodnia AS (
+	SELECT 	id, 
+			start_time, 
+			to_char(start_time, 'Day') AS dzien_wypadku
+		FROM accidents a
+		)
+	SELECT count(id) AS ilosc,
+			dzien_wypadku
+	FROM dni_tygodnia 
+	GROUP BY dzien_wypadku
+	ORDER BY ilosc desc;
+
+
+-- Jak widać w piątek jest najwięcej wypadków. 
+-- Sprawdźmy zatem czy dane te będą się zmieniać na podstawie lat, 
+
+CREATE VIEW wypadki_dni_tygodnia_z_podzialem_na_lata as
+WITH dni_tygodnia_rok AS (
+	SELECT 	id, 
+			start_time, 
+			to_char(start_time, 'Day') AS dzien_wypadku,
+			to_char(start_time, 'YYYY') AS rok
+		FROM accidents a
+		)
+	SELECT count(id) AS ilosc,
+			rok, 
+			dzien_wypadku
+	FROM dni_tygodnia_rok
+	GROUP BY rok, dzien_wypadku
+	ORDER BY rok, ilosc DESC;
+
+
+-- Obliczenie korelacji liczby wypadków z szerokoscia 
+-- początkowo badamy dane bez zaokrąglania 
+
+WITH korelacja_szerokosc AS (
+	SELECT 	count(id) AS liczba , 
+			start_lat AS szerokosc
+	FROM accidents a 
+	GROUP BY start_lat
+)
+	SELECT CORR (liczba,szerokosc)
+	FROM korelacja_szerokosc;
+
+--Wówczas korelacja wychodzi nam -0,0467
+
+
+-- Zaś poniżje kod jeśli zaokrąglimy wartości do pełnych liczb
+WITH korelacja_szerokosc AS (
+	SELECT 	count(id) AS liczba , 
+			round(start_lat) AS szerokosc
+	FROM accidents a 
+	GROUP BY round(start_lat)
+)
+	SELECT CORR (liczba,szerokosc)
+	FROM korelacja_szerokosc;
+
+-- Wówczas otrzymujemy korelację równą -0,1167
+
+
+-- Sprawdzamy teraz długość geograficzną 
+
+-- początkowo badamy dane bez zaokrąglania 
+
+WITH korelacja_dlugosc AS (
+	SELECT 	count(id) AS liczba , 
+			start_lng  AS dlugosc
+	FROM accidents a 
+	GROUP BY start_lng
+)
+	SELECT CORR (liczba,dlugosc)
+	FROM korelacja_dlugosc;
+
+-- Mamy wynik -0.0447
+-- Poniżej kod jeśli zaokrąglimy szerokość do liczb całkowitych 
+
+WITH korelacja_dlugosc AS (
+	SELECT 	count(id) AS liczba , 
+			round(start_lng)  AS dlugosc
+	FROM accidents a 
+	GROUP BY round(start_lng)
+)
+	SELECT CORR (liczba,dlugosc)
+	FROM korelacja_dlugosc;
+
+-- Widzimy, że zaokrąglenie niewiele dało, gdyż po zaokrągleniu mamy -0,0498
+
+
+
+
+
