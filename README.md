@@ -19,8 +19,9 @@ pipenv install "numpy==1.22.3"
 In project folder you can run in command line:
 
 
-pipenv -shell
+pipenv shell
 python Dash_App.py
+
 
 Then you can make prediction in fitted model in website
 
