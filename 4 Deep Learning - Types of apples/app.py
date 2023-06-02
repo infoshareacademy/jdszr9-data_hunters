@@ -8,38 +8,7 @@ import os
 import random
 import io
 import math
-
-def load_random_photo(folder):
-    files = os.listdir(folder)
-    random_file = random.choice(files)
-    photos = os.listdir(folder+"/"+random_file)
-    random_photo = random.choice(photos)
-    img = Image.open(folder+"/"+random_file+"/"+random_photo)
-    
-    new_size = (322, 322)
-    img = img.resize(new_size)
-
-    image = np.array(img)  # Konwertuj obraz PIL na numpy array
-    image = image / 255.0  # Znormalizuj wartości pikseli do zakresu [0, 1]
-    image = np.expand_dims(image, axis=0)  # Dodaj dodatkowy wymiar do obsługi wsadu
-    
-    class_img=random_file[0]
-    return image, class_img
-
-def load_photo_cat(folder, cat):
-    photos = os.listdir(folder+"/"+cat)
-    random_photo = random.choice(photos)
-    img = Image.open(folder+"/"+cat+"/"+random_photo)
-    
-    new_size = (322, 322)
-    img = img.resize(new_size)
-
-    image = np.array(img)  # Konwertuj obraz PIL na numpy array
-    image = image / 255.0  # Znormalizuj wartości pikseli do zakresu [0, 1]
-    image = np.expand_dims(image, axis=0)  # Dodaj dodatkowy wymiar do obsługi wsadu
-    
-    return image
-
+from Utilities.load_photos import load_random_photo, load_random_photo_from_cat, transform_photo
 
 def main():
     # Tworzenie siatki 2 x 3
@@ -48,38 +17,38 @@ def main():
     # Pierwszy wiersz
     with cols[0]:
         cat='A'
-        img1=load_photo_cat(source,cat)
+        img1=load_random_photo_from_cat(source,cat)
         st.image(img1)
         st.caption('Kategoria '+cat)
     
     with cols[1]:
         cat='B'
-        img2=load_photo_cat(source,cat)
+        img2=load_random_photo_from_cat(source,cat)
         st.image(img2)
         st.caption('Kategoria '+cat)
     
     with cols[2]:
         cat='C'
-        img3=load_photo_cat(source,cat)
+        img3=load_random_photo_from_cat(source,cat)
         st.image(img3)
         st.caption('Kategoria '+cat)
     
     # Drugi wiersz
     with cols[0]:
         cat='D'
-        img4=load_photo_cat(source,cat)
+        img4=load_random_photo_from_cat(source,cat)
         st.image(img4)
         st.caption('Kategoria '+cat)
     
     with cols[1]:
         cat='E'
-        img5=load_photo_cat(source,cat)
+        img5=load_random_photo_from_cat(source,cat)
         st.image(img5)
         st.caption('Kategoria '+cat)
     
     with cols[2]:
         cat='F'
-        img6=load_photo_cat(source,cat)
+        img6=load_random_photo_from_cat(source,cat)
         st.image(img6)
         st.caption('Kategoria '+cat)
         
@@ -108,4 +77,4 @@ if uploaded_file is not None:
     prediction = model.predict(np.expand_dims(img_array, axis=0))
     y_pred = np.argmax(prediction, axis=1)
     pred_gatunek = konwersja[y_pred[0]]
-    st.text(f"Predykcja: {pred_gatunek}")
+    st.text(f"Gatunek: {uploaded_file.name[0]} Predykcja: {pred_gatunek}")
