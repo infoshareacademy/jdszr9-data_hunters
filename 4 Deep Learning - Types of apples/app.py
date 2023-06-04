@@ -8,7 +8,7 @@ import os
 import random
 import io
 import math
-from Utilities.load_photos import load_random_photo, load_random_photo_from_cat, transform_photo
+from Utilities.load_photos import load_random_photo, load_random_photo_from_cat
 
 def main():
     # Tworzenie siatki 2 x 3
